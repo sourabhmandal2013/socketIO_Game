@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 // We will determine the 'host' dynamically for console logging
 // The server will listen on 0.0.0.0 by default when host is omitted in listen()
 
