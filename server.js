@@ -2,13 +2,14 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const os = require('os');
+// const os = require('os'); // Removed os module as it's no longer needed for IP detection
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
+const host = '127.0.0.1'; // Explicitly set host to localhost
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -41,19 +42,7 @@ function resetTeams() {
 
 resetTeams(); // Initialize teams and set gameOver to true
 
-function getLocalIP() {
-    const interfaces = os.networkInterfaces();
-    for (let iface in interfaces) {
-        for (let alias of interfaces[iface]) {
-            if (alias.family === 'IPv4' && !alias.internal) {
-                return alias.address;
-            }
-        }
-    }
-    return '127.0.0.1'; // Fallback
-}
-
-const localIP = getLocalIP();
+// Removed getLocalIP function as we're now explicitly using 127.0.0.1
 
 io.on('connection', (socket) => {
     console.log('New player connected or admin console loaded');
@@ -79,10 +68,7 @@ io.on('connection', (socket) => {
             }
         } else {
             // If game is not running, player stays in "Please Wait" state.
-            // No need to assign a team or send gameStarted immediately.
             console.log('Game not active. Player will wait for game to start.');
-            // The client-side will naturally stay in 'Please Wait...' state
-            // until 'gameStarted' is received.
         }
     } else {
         // This is likely the admin console
@@ -90,9 +76,7 @@ io.on('connection', (socket) => {
     }
     
     // For all connections, ensure they have the latest scores.
-    // This is important for both players (to see their position) and admin.
     io.emit('updateScores', teams);
-
 
     socket.on('startGame', (pin, newMaxTaps) => {
         if (pin === GAME_PIN) {
@@ -106,14 +90,11 @@ io.on('connection', (socket) => {
             gameOver = false; // Game is now running!
 
             // Ensure all players are re-assigned and updated
-            // This is crucial if players connected while no game was running
-            // or if some players disconnected and reconnected.
             TEAMS.forEach(teamName => {
                 teams[teamName].members = []; // Clear old members
             });
 
             // Re-assign all *currently connected* players to balance teams
-            // (Only for actual client players, not admin sockets)
             io.sockets.sockets.forEach((s) => {
                 if (!s.handshake.headers.referer || !s.handshake.headers.referer.endsWith('index.html')) {
                     const assignedTeam = TEAMS.reduce((a, b) =>
@@ -127,7 +108,6 @@ io.on('connection', (socket) => {
                 }
             });
 
-
             io.emit('updateScores', teams);
 
             let countdown = 3;
@@ -137,8 +117,6 @@ io.on('connection', (socket) => {
                 if (countdown < 0) {
                     clearInterval(countdownInterval);
                     io.emit('gameStarted');
-                    // Server must emit an 'updateScores' event immediately after 'gameStarted'
-                    // so the tracks and cars are drawn on the admin console.
                     io.emit('updateScores', teams);
                 }
             }, 1000);
@@ -166,18 +144,14 @@ io.on('connection', (socket) => {
         resetTeams(); // This sets gameOver back to true
         io.emit('updateScores', teams);
         io.emit('gameReset'); // This will trigger pinEntry display on admin
-        // Players will return to "Please Wait" as gameOver is true
     });
     
     socket.on('requestTeam', () => {
-        // This event should now be used less frequently, as initial team assignment happens on connect
-        // But keep it for explicit client requests if needed (e.g., re-joining logic)
         if (!gameOver) { // Only assign if game is running
             const assignedTeam = TEAMS.reduce((a, b) =>
                 teams[a].members.length < teams[b].members.length ? a : b
             );
             if (teams[assignedTeam]) {
-                // Remove from old team if already assigned
                 if (socket.team && teams[socket.team]) {
                     teams[socket.team].members = teams[socket.team].members.filter(id => id !== socket.id);
                 }
@@ -185,7 +159,7 @@ io.on('connection', (socket) => {
                 socket.team = assignedTeam;
                 socket.emit('assignedTeam', assignedTeam);
                 io.emit('updateScores', teams);
-                socket.emit('gameStarted'); // Re-send game started if game is running
+                socket.emit('gameStarted');
             }
         }
     });
@@ -194,7 +168,7 @@ io.on('connection', (socket) => {
         console.log('Player disconnected');
         if (socket.team && teams[socket.team]) {
             teams[socket.team].members = teams[socket.team].members.filter(id => id !== socket.id);
-            io.emit('updateScores', teams); // Update scores/player counts on disconnect
+            io.emit('updateScores', teams);
         }
     });
 });
@@ -203,8 +177,8 @@ function announceWinner(winningTeam) {
     io.emit('gameOver', winningTeam);
 }
 
-server.listen(port, () => {
-    console.log(`Server running at http://${localIP}:${port}`);
-    console.log(`Admin console typically at: http://${localIP}:${port}/ or http://${localIP}:${port}/index.html`);
-    console.log(`Player client page: http://${localIP}:${port}/client.html`);
+server.listen(port, host, () => {
+    console.log(`Server running at http://${host}:${port}`);
+    console.log(`Admin console typically at: http://${host}:${port}/ or http://${host}:${port}/index.html`);
+    console.log(`Player client page: http://${host}:${port}/client.html`);
 });
