@@ -2,14 +2,15 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-// const os = require('os'); // Removed os module as it's no longer needed for IP detection
+const os = require('os'); // Re-import the os module
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const port = process.env.PORT || 8080;
-const host = '127.0.0.1'; // Explicitly set host to localhost
+const port = process.env.PORT || 3000;
+// We will determine the 'host' dynamically for console logging
+// The server will listen on 0.0.0.0 by default when host is omitted in listen()
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -42,7 +43,21 @@ function resetTeams() {
 
 resetTeams(); // Initialize teams and set gameOver to true
 
-// Removed getLocalIP function as we're now explicitly using 127.0.0.1
+// Function to get the local non-loopback IPv4 address
+function getNetworkIP() {
+    const interfaces = os.networkInterfaces();
+    for (const ifaceName in interfaces) {
+        const iface = interfaces[ifaceName];
+        for (const alias of iface) {
+            if (alias.family === 'IPv4' && !alias.internal) {
+                return alias.address;
+            }
+        }
+    }
+    return 'localhost'; // Fallback if no external IP is found
+}
+
+const displayHost = getNetworkIP(); // Get the IP for display purposes
 
 io.on('connection', (socket) => {
     console.log('New player connected or admin console loaded');
@@ -177,8 +192,11 @@ function announceWinner(winningTeam) {
     io.emit('gameOver', winningTeam);
 }
 
-server.listen(port, host, () => {
-    console.log(`Server running at http://${host}:${port}`);
-    console.log(`Admin console typically at: http://${host}:${port}/ or http://${host}:${port}/index.html`);
-    console.log(`Player client page: http://${host}:${port}/client.html`);
+server.listen(port, () => {
+    // When host is omitted, listen defaults to 0.0.0.0 (all available IPv4 interfaces)
+    // or :: (all available IPv6 interfaces)
+    console.log(`Server listening on port ${port}`);
+    console.log(`Access at: http://${displayHost}:${port}/`);
+    console.log(`Admin console typically at: http://${displayHost}:${port}/index.html`);
+    console.log(`Player client page: http://${displayHost}:${port}/client.html`);
 });
