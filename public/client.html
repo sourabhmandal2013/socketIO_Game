@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CWP Rally Player</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to right, #0f2027, #203643, #2c5364);
+            color: #fff;
+            text-align: center;
+            padding: 20px 20px 100px 20px; /* Space for fixed button */
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            justify-content: flex-start;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 2.2em;
+            margin-bottom: 15px;
+            color: #00ebeb;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        /* HUD Container for Team and Position */
+        #hudDisplay {
+            position: absolute;
+            top: 10px; /* Moved slightly higher */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.5); /* Slightly less transparent */
+            padding: 5px 10px; /* Reduced padding */
+            border-radius: 8px; /* Slightly smaller border-radius */
+            box-shadow: 0 0 8px rgba(0,0,0,0.6); /* Adjusted shadow */
+            pointer-events: none; /* Allows clicks to pass through */
+            width: 70%;
+            max-width: 160px;
+            box-sizing: border-box;
+        }
+
+        #team, #position {
+            font-size: 0.9em; /* Smaller font size */
+            padding: 1px 0; /* Minimal padding */
+            margin: 1px 0; /* Minimal margin */
+            min-width: unset;
+            background-color: transparent;
+        }
+
+        #countdown {
+            font-size: 2em;
+            margin: 15px 0;
+            color: #e74c3c;
+            font-weight: bold;
+            display: none;
+        }
+
+        /* Game Visuals */
+        #gameVisual {
+            width: 150px;
+            height: 45vh; /* Increased height slightly for more track space */
+            min-height: 250px;
+            max-height: 500px;
+            background-color: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            margin: 20px auto;
+            border: 5px solid #222;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+            display: none;
+            flex-shrink: 0;
+        }
+
+        #highway {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 1;
+
+            background-image:
+                repeating-linear-gradient(
+                    to top,
+                    #555 0px,
+                    #555 50px,
+                    #777 50px,
+                    #777 100px
+                );
+            background-size: 100% 200px;
+            background-position: 0 0;
+            animation: highwayMove 2s linear infinite;
+        }
+
+        #highway::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            height: 200%;
+            width: 8px;
+            background: repeating-linear-gradient(
+                to top,
+                #fff 0px,
+                #fff 40px,
+                transparent 40px,
+                transparent 80px
+            );
+            transform: translateX(-50%);
+            animation: highwayMove 2s linear infinite;
+            z-index: 2;
+        }
+
+        @keyframes highwayMove {
+            from { background-position: 0 0; }
+            to { background-position: 0 200px; }
+        }
+
+        #carContainer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* Center both horizontally and vertically */
+            z-index: 10;
+            width: 80px; /* Fixed width for the car */
+            height: 80px; /* Adjusted height to fit the aspect ratio of the new SVG */
+            overflow: visible;
+        }
+
+        .bouncing-car {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.15s ease-out; /* Smooth transition for non-animation moves */
+        }
+
+        /* New class for triggered bounce animation */
+        .bouncing-car.car-tapped {
+            animation: carBounce 0.3s forwards; /* Short bounce, non-repeating */
+        }
+
+        /* Shorter, more punchy bounce for taps */
+        @keyframes carBounce {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); } /* Higher bounce */
+            100% { transform: translateY(0); }
+        }
+
+        /* --- Accelerate Button Styling (Overlay, shorter) --- */
+        #tapButton {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+
+            width: 80vw;
+            max-width: 250px;
+            height: 70px;
+            
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 7px 0 #c0392b;
+            transition: all 0.1s ease;
+            font-size: 1.5em;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        #tapButton:active {
+            background-color: #c0392b;
+            box-shadow: 0 2px 0 #a93226;
+            transform: translateX(-50%) translateY(5px);
+        }
+
+        #tapButton:disabled {
+            background-color: #95a5a6; /* Greyed out */
+            box-shadow: 0 4px 0 #7f8c8d;
+            cursor: not-allowed;
+            transform: translateX(-50%) translateY(0);
+            /* Adjust text appearance for disabled state if needed, e.g., lower opacity */
+            opacity: 0.8;
+        }
+
+        /* Media queries for larger screens */
+        @media (min-width: 768px) {
+            body {
+                padding-bottom: 120px;
+            }
+            h1 {
+                font-size: 3em;
+            }
+            #hudDisplay {
+                max-width: 200px;
+                padding: 8px 12px;
+            }
+            #team, #position {
+                font-size: 1.1em;
+            }
+            #countdown {
+                font-size: 3em;
+            }
+            #gameVisual {
+                height: 60vh;
+                width: 200px;
+            }
+            #tapButton {
+                width: 200px;
+                height: 90px;
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>CWP Rally: Player Console</h1>
+
+    <div id="countdown"></div>
+
+    <div id="gameVisual">
+        <div id="hudDisplay">
+            <div id="team">Team: ...</div>
+            <div id="position">Position: ...</div>
+        </div>
+        <div id="highway"></div>
+        <div id="carContainer">
+            </div>
+    </div>
+
+    <button id="tapButton">Accelerate !</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let myTeam = "";
+
+        const tapButton = document.getElementById("tapButton");
+        const countdownDiv = document.getElementById("countdown");
+        const gameVisual = document.getElementById("gameVisual");
+        const carContainer = document.getElementById("carContainer");
+        let carSVGElement = null; // Reference to the SVG element
+
+        // SVG for the car (top-down view)
+        function generateCarSVG(color) {
+            const carPathData = "M29.395,0H17.636c-3.117,0-5.643,3.467-5.643,6.584v34.804c0,3.116,2.526,5.644,5.643,5.644h11.759c3.116,0,5.644-2.527,5.644-5.644V6.584C35.037,3.467,32.511,0,29.395,0z M34.05,14.188v11.665l-2.729,0.351v-4.806L34.05,14.188z M32.618,10.773c-1.016,3.9-2.219,8.51-2.219,8.51H16.631l-2.222-8.51C14.41,10.773,23.293,7.755,32.618,10.773z M15.741,21.713v4.492l-2.73-0.349V14.502L15.741,21.713z M13.011,37.938V27.579l2.73,0.343v8.196L13.011,37.938z M14.568,40.882l2.218-3.336h13.771l2.219,3.336H14.568z M31.321,35.805v-7.872l2.729-0.355v10.048L31.321,35.805z";
+
+            return `
+                <svg class="bouncing-car" width="100%" height="100%" viewBox="0 0 47.032 47.032" xmlns="http://www.w3.org/2000/svg">
+                    <g>
+                        <path d="${carPathData}" fill="${color}" stroke="#333" stroke-width="0.5"/>
+                    </g>
+                </svg>
+            `;
+        }
+
+        // Event listener for the tap button
+        tapButton.addEventListener("click", () => {
+            socket.emit("tap");
+            // Trigger car bounce animation
+            if (carSVGElement) {
+                // Remove the class first to restart animation if rapidly tapped
+                carSVGElement.classList.remove('car-tapped');
+                // Force reflow to ensure animation restarts (important for rapid clicks)
+                void carSVGElement.offsetWidth;
+                carSVGElement.classList.add('car-tapped');
+            }
+        });
+
+        // Event listener for when the car animation ends
+        carContainer.addEventListener('animationend', (event) => {
+            if (event.animationName === 'carBounce' && carSVGElement) {
+                carSVGElement.classList.remove('car-tapped');
+            }
+        });
+
+
+        // Hide TAP button and game visual initially
+        tapButton.style.display = "none";
+        tapButton.disabled = true; // Start disabled
+        tapButton.innerText = "Please Wait..."; // Set initial text
+        gameVisual.style.display = "none";
+        countdownDiv.style.display = "none";
+
+        // When a team is assigned
+        socket.on("assignedTeam", (team) => {
+            myTeam = team;
+            console.log("Assigned to team:", team); // Debug log
+            document.getElementById("team").innerText = `Team: ${team}`;
+            carContainer.innerHTML = generateCarSVG(myTeamColors[team]); // Set car color
+            carSVGElement = carContainer.querySelector('.bouncing-car'); // Get reference to the SVG
+        });
+
+        // Map team names to colors for client-side rendering
+        const myTeamColors = {
+            red: '#e74c3c',
+            blue: '#3498db',
+            green: '#2ecc71',
+            yellow: '#f1c40f'
+        };
+
+
+        // Update scores and player position
+        socket.on("updateScores", (teams) => {
+            // Sort teams by score in descending order
+            const sortedTeams = Object.entries(teams).sort((a, b) => b[1].score - a[1].score);
+
+            // Find the current player's team position
+            const position = sortedTeams.findIndex(([teamName]) => teamName === myTeam) + 1;
+            document.getElementById("position").innerText = `Position: ${position}`;
+        });
+
+        // Handle game start countdown
+        socket.on("countdown", (seconds) => {
+            countdownDiv.style.display = "block";
+            countdownDiv.innerText = `Game starting in ${seconds}...`;
+            tapButton.disabled = true; // Disable tap button during countdown
+            tapButton.innerText = "Please Wait..."; // Set text to "Please Wait..."
+            gameVisual.style.display = "none"; // Hide highway during countdown
+        });
+
+        // Handle game started event
+        socket.on("gameStarted", () => {
+            countdownDiv.style.display = "none";
+            countdownDiv.innerText = ""; // Clear countdown message
+            tapButton.style.display = "block"; // Show TAP button
+            tapButton.disabled = false; // Enable tap button
+            tapButton.innerText = "Accelerate!"; // Set text back to "Accelerate!"
+            gameVisual.style.display = "block"; // Show highway and car
+            // Ensure car is rendered with correct color and reference obtained if not already
+            if (!carSVGElement) {
+                carContainer.innerHTML = generateCarSVG(myTeamColors[myTeam]);
+                carSVGElement = carContainer.querySelector('.bouncing-car');
+            }
+        });
+
+        // Handle game over event
+        socket.on("gameOver", (winner) => {
+            tapButton.style.display = "none"; // Hide TAP button
+            tapButton.disabled = true; // Disable tap button
+            tapButton.innerText = "Game Over!"; // Can show "Game Over!" or "Please Wait..."
+            gameVisual.style.display = "none"; // Hide highway
+            alert(`Game Over! Winning team: ${winner}`);
+        });
+
+        // Handle game reset event
+        socket.on("gameReset", () => {
+            document.getElementById("team").innerText = "Team: ...";
+            document.getElementById("position").innerText = "Position: ...";
+            tapButton.style.display = "none";
+            tapButton.disabled = true;
+            tapButton.innerText = "Please Wait..."; // Set text to "Please Wait..."
+            countdownDiv.style.display = "none";
+            countdownDiv.innerText = "";
+            gameVisual.style.display = "none"; // Hide highway on reset
+
+            // Assuming backgroundMusic and celebrationMusic are defined globally or accessible here
+            // You might need to define these audio elements in your HTML if they are not already.
+            if (typeof backgroundMusic !== "undefined") {
+                backgroundMusic.currentTime = 0;
+                backgroundMusic.play();
+            }
+
+            if (typeof celebrationMusic !== "undefined") {
+                celebrationMusic.pause();
+                celebrationMusic.currentTime = 0;
+            }
+
+            // Request a new team assignment after reset
+            socket.emit("requestTeam");
+            // Clear car SVG element reference
+            carSVGElement = null; 
+        });
+    </script>
+</body>
+</html>
