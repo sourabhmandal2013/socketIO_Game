@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CWP Rally Admin Console</title>
     <style>
-        /* Your existing styles (copied from previous response for completeness) */
         body {
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
@@ -16,6 +15,8 @@
             display: flex;
             flex-direction: column;
             min-height: 100vh;
+            overflow-x: hidden;
+            /* Prevent horizontal scroll from subtle animations */
         }
 
         header {
@@ -27,82 +28,45 @@
             color: #00ebeb;
             font-size: 24px;
             box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
-            text-align: center;
             flex-shrink: 0;
         }
 
         header h1 {
-            margin: 0 auto;
+            margin: 0;
+            flex-grow: 1;
+            text-align: center;
             transition: font-size 0.3s ease-in-out;
         }
 
-        #main {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            padding: 20px;
-            justify-content: center;
-            align-items: flex-start;
-            flex-grow: 1;
-        }
-
-        #pinEntry,
         #resetGame {
-            background-color: rgba(255, 255, 255, 0.08);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
-            margin: 20px auto 0;
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
+            margin: 0;
             display: flex;
-            flex-direction: column;
-            gap: 15px;
             align-items: center;
-            width: fit-content;
-            max-width: 90%;
+            justify-content: flex-end;
+            width: auto;
+            max-width: none;
+            flex-shrink: 0;
         }
 
-        #pinEntry label {
-            font-size: 1.1em;
-            color: #00e6e6;
-        }
-
-        #pinEntry input[type="password"],
-        #pinEntry input[type="number"] {
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #00e6e6;
-            background-color: rgba(0, 0, 0, 0.5);
-            color: #fff;
-            width: 200px;
-            text-align: center;
-        }
-
-        #pinEntry input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        #pinEntry button,
         #resetGame button {
             padding: 10px 20px;
             border: none;
             border-radius: 5px;
-            background-color: #00e6e6;
-            color: #111;
+            background-color: #e60000;
+            color: #fff;
             font-size: 1em;
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
             font-weight: bold;
         }
 
-        #pinEntry button:hover,
         #resetGame button:hover {
-            background-color: #00b3b3;
+            background-color: #b30000;
             transform: translateY(-2px);
-        }
-
-        #pinStatus {
-            margin-top: 10px;
-            font-weight: bold;
         }
 
         #countdown {
@@ -112,16 +76,56 @@
             color: #ffcc00;
             margin-top: 20px;
             text-shadow: 0 0 10px rgba(255, 204, 0, 0.8);
+            flex-shrink: 0;
         }
 
-        #teamTable {
-            flex: 1;
-            background-color: rgba(255, 255, 255, 0.05);
+        /* New dashboard area for leaderboard, QR, and pin entry */
+        #dashboardArea {
+            display: flex;
+            flex-wrap: wrap;
+            /* Allows items to wrap on smaller screens */
+            gap: 20px;
+            padding: 20px;
+            justify-content: center;
+            align-items: flex-start;
+            flex-shrink: 0;
+            width: 100%;
+            box-sizing: border-box;
+            transition: all 0.5s ease-out;
+            /* Smooth transition for resizing */
+        }
+
+        .dashboard-segment {
+            background-color: rgba(255, 255, 255, 0.08);
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 0 18px rgba(0, 255, 255, 0.2);
-            min-width: 300px;
-            max-width: 100%;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            width: fit-content;
+            flex: 1;
+            /* Allows them to grow and shrink */
+            min-width: 280px;
+            /* Minimum width before wrapping */
+            max-width: calc(33.33% - 14px);
+            /* Approx 1/3 width minus gap */
+            box-sizing: border-box;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            /* Ensure content stays within */
+        }
+
+        /* Specific override for team table to apply segment styling to table itself */
+        #teamTable.dashboard-segment {
+            padding: 0;
+            background-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            align-items: stretch;
+            border-radius: 10px;
+            overflow: hidden;
         }
 
         #teamTable table {
@@ -149,11 +153,79 @@
             background-color: rgba(0, 0, 0, 0.4);
         }
 
-        /* Removed QR code specific styles */
+
+        #pinEntry label {
+            font-size: 1.1em;
+            color: #00e6e6;
+        }
+
+        #pinEntry input[type="password"],
+        #pinEntry input[type="number"] {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #00e6e6;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            width: 200px;
+            text-align: center;
+        }
+
+        #pinEntry input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        #pinEntry button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #00e6e6;
+            color: #111;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            font-weight: bold;
+        }
+
+        #pinEntry button:hover {
+            background-color: #00b3b3;
+            transform: translateY(-2px);
+        }
+
+        #pinStatus {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        #qrCodeContainer p {
+            color: #00e6e6;
+            font-size: 1.1em;
+            margin: 0;
+        }
+
+        #qrCodeContainer img {
+            width: 260px;
+            height: 260px;
+            border: 5px solid #00e6e6;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+
+
+        #main {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 20px;
+            justify-content: center;
+            align-items: flex-start;
+            flex-grow: 1;
+            transition: all 0.5s ease-out;
+        }
 
         #tracks {
             width: 100%;
-            margin-top: 30px;
+            margin-top: 0;
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -192,11 +264,33 @@
             align-items: center;
             transition: left 0.5s ease-out;
             z-index: 2;
+            perspective: 500px;
+            transform-style: preserve-3d;
         }
 
         .car svg {
             filter: drop-shadow(2px 2px 5px rgba(0, 0, 0, 0.6));
+            transition: transform 0.3s ease-out;
         }
+
+        /* Wheelie effect on cars when race starts */
+        #tracks.wheelie .car {
+            animation: wheelieCar 1s ease-out forwards;
+            transform-origin: bottom center;
+        }
+
+        @keyframes wheelieCar {
+            0% {
+                transform: translateY(0) rotateX(0deg);
+            }
+            50% {
+                transform: translateY(-10px) rotateX(15deg);
+            }
+            100% {
+                transform: translateY(0) rotateX(0deg);
+            }
+        }
+
 
         .finish-line {
             position: absolute;
@@ -255,29 +349,81 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         @keyframes bounceIn {
-            0% { transform: scale(0.5); opacity: 0; }
-            70% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); }
-        }
-
-        @media (max-width: 768px) {
-            #main {
-                flex-direction: column;
-                align-items: center;
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
             }
 
-            #teamTable { /* Removed #qrCode from this selector */
-                width: 100%;
-                max-width: 500px;
+            70% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* Media Queries for responsiveness */
+        @media (min-width: 1200px) {
+            #dashboardArea {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: flex-start;
+            }
+
+            .dashboard-segment {
+                max-width: calc(33.33% - 14px);
+            }
+        }
+
+
+        @media (max-width: 1199px) {
+            #dashboardArea {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .dashboard-segment {
+                max-width: calc(50% - 10px);
+            }
+        }
+
+
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
             }
 
             header h1 {
                 font-size: 20px;
+            }
+
+            #resetGame {
+                justify-content: center;
+            }
+
+            #dashboardArea {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .dashboard-segment {
+                width: 100%;
+                max-width: 400px;
             }
 
             #countdown {
@@ -294,8 +440,7 @@
                 padding: 15px;
             }
 
-            #pinEntry,
-            #resetGame {
+            .dashboard-segment {
                 padding: 15px;
                 gap: 10px;
             }
@@ -311,7 +456,10 @@
                 font-size: 0.9em;
             }
 
-            /* Removed QR code specific media queries */
+            #qrCodeContainer img {
+                width: 180px;
+                height: 180px;
+            }
 
             .track {
                 height: 50px;
@@ -328,31 +476,90 @@
                 padding: 3px 8px;
             }
         }
+
+        /* Layout adjustment when tracks are visible (game active) */
+        body.game-active #dashboardArea {
+            flex-direction: row;
+            justify-content: space-around;
+            align-items: flex-start;
+            padding: 10px;
+            gap: 15px; /* Increased gap slightly for better spacing */
+            min-height: auto;
+            flex-wrap: wrap;
+            max-height: 350px; /* Increased max-height to allow larger elements */
+            overflow-y: auto;
+        }
+
+        body.game-active .dashboard-segment {
+            flex-grow: 1;
+            flex-shrink: 1;
+            min-width: 200px; /* Increased min-width for better visibility */
+            max-width: 350px; /* Increased max width for each segment */
+            padding: 15px; /* Slightly increased padding */
+        }
+
+        body.game-active #teamTable.dashboard-segment {
+            flex: 2; /* Allow table to take more space if available */
+            min-width: 300px; /* Ensure table has more space */
+            max-width: 450px; /* Increased max-width for table */
+            overflow-y: auto;
+            max-height: 250px; /* Increased max-height for table */
+        }
+
+        body.game-active #qrCodeContainer img {
+            width: 200px;
+            /* Increased QR code size when game is active */
+            height: 200px;
+        }
+
+        body.game-active #pinEntry {
+            display: none;
+        }
+
+        body.game-active #main {
+            flex-grow: 2;
+        }
+
+        /* Further adjustment for smaller screens when game is active to ensure visibility */
+        @media (max-width: 768px) {
+            body.game-active #dashboardArea {
+                flex-direction: column;
+                align-items: center;
+                padding: 10px;
+                max-height: none;
+                overflow-y: visible;
+            }
+
+            body.game-active .dashboard-segment {
+                width: 90%;
+                max-width: 350px; /* Adjusted max-width for better mobile display */
+                min-width: unset;
+            }
+
+            body.game-active #teamTable.dashboard-segment {
+                max-height: 200px; /* Adjusted max-height for table on smaller screens */
+            }
+
+            body.game-active #qrCodeContainer img {
+                width: 180px; /* Larger QR on mobile when game active */
+                height: 180px;
+            }
+        }
     </style>
 </head>
 
 <body>
     <header>
         <h1 id="mainHeading">CWP Rally</h1>
+        <div id="resetGame">
+            <button onclick="resetGame()">Reset Game</button>
+        </div>
     </header>
-
-    <div id="pinEntry">
-        <label for="pinInput">Game pin:</label>
-        <input type="password" id="pinInput" placeholder="Game PIN" />
-        <label for="distanceInput">Distance:</label>
-        <input type="number" id="distanceInput" placeholder="Distance" value="100" />
-        <button onclick="submitPin()">Start Game</button>
-        <p id="pinStatus" style="color:red"></p>
-    </div>
-
-    <div id="resetGame">
-        <button onclick="resetGame()">Reset Game</button>
-    </div>
 
     <div id="countdown"></div>
 
-    <div id="main">
-        <div id="teamTable">
+    <div id="dashboardArea">
+        <div id="teamTable" class="dashboard-segment">
             <table>
                 <thead>
                     <tr>
@@ -364,9 +571,24 @@
             </table>
         </div>
 
+        <div id="qrCodeContainer" class="dashboard-segment">
+            <p>Scan to Join the Race!</p>
+            <img id="qrCode" src="/qrcode.png" alt="QR Code" />
         </div>
 
-    <div id="tracks">
+        <div id="pinEntry" class="dashboard-segment">
+            <label for="pinInput">Game pin:</label>
+            <input type="password" id="pinInput" placeholder="Game PIN" />
+            <label for="distanceInput">Distance:</label>
+            <input type="number" id="distanceInput" placeholder="Distance" value="100" />
+            <button onclick="submitPin()">Start Game</button>
+            <p id="pinStatus" style="color:red"></p>
+        </div>
+    </div>
+
+    <div id="main">
+        <div id="tracks">
+        </div>
     </div>
 
     <audio id="celebrationMusic" src="celebration.mp3"></audio>
@@ -383,16 +605,13 @@
         const raceStartMusic = document.getElementById("raceStartMusic");
         const countdownDiv = document.getElementById("countdown");
         const mainHeading = document.getElementById("mainHeading");
-        const tracksDiv = document.getElementById("tracks"); // Get tracks div reference
+        const tracksDiv = document.getElementById("tracks");
+        const qrCodeContainer = document.getElementById("qrCodeContainer");
+        const pinEntryDiv = document.getElementById("pinEntry");
+        const teamTableDiv = document.getElementById("teamTable");
+        const body = document.body; // Get body element for class manipulation
 
         let MAX_TAPS = 100;
-
-        // Removed hostname variable as it's only used for QR code
-        // Removed loadQrCode function as it's no longer needed
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Removed loadQrCode() call
-        });
 
         function submitPin() {
             const distanceInputVal = document.getElementById("distanceInput").value;
@@ -405,51 +624,54 @@
         }
 
         function resetGame() {
-            // Hide tracks and remove animation class
             tracksDiv.style.display = "none";
             tracksDiv.classList.remove('show');
-            tracksDiv.innerHTML = ""; // Clear old tracks
+            tracksDiv.classList.remove('wheelie'); // Remove wheelie class on reset
+            tracksDiv.innerHTML = "";
 
             socket.emit("resetGame");
             if (mainHeading) mainHeading.style.fontSize = "24px";
-            // Removed loadQrCode() call
+
+            // Show all dashboard elements on reset
+            if (qrCodeContainer) qrCodeContainer.style.display = "flex";
+            if (pinEntryDiv) pinEntryDiv.style.display = "flex";
+            if (teamTableDiv) teamTableDiv.style.display = "flex"; // Ensure it's flex for dashboard segment
+
+            body.classList.remove('game-active'); // Remove game active class from body
         }
 
         socket.on("requestPin", () => {
-            document.getElementById("pinEntry").style.display = "block";
-            // Removed line for qrCode display
-            tracksDiv.style.display = "none"; // Ensure tracks are hidden when waiting for PIN
-            tracksDiv.classList.remove('show'); // Remove animation class
+            if (pinEntryDiv) pinEntryDiv.style.display = "flex";
+            if (qrCodeContainer) qrCodeContainer.style.display = "flex";
+            if (teamTableDiv) teamTableDiv.style.display = "flex"; // Ensure it's flex
+            tracksDiv.style.display = "none";
+            tracksDiv.classList.remove('show');
+            tracksDiv.classList.remove('wheelie'); // Ensure wheelie is off
             if (mainHeading) mainHeading.style.fontSize = "24px";
+
+            body.classList.remove('game-active');
         });
 
         socket.on("countdown", (seconds) => {
             raceStartMusic.play();
             countdownDiv.innerText = `Game starting in ${seconds}...`;
+            if (pinEntryDiv) pinEntryDiv.style.display = "none"; // Hide pin entry during countdown
+            // Keep QR and Table visible
         });
 
         socket.on("gameStarted", () => {
-            document.getElementById("pinEntry").style.display = "none";
-            // Removed line for qrCode display
+            if (pinEntryDiv) pinEntryDiv.style.display = "none";
+            // Keep QR and Table visible
+            // The dashboard area will shrink and rearrange via CSS when body.game-active is set
 
-            // Make the tracks div visible and apply the animation class
-            tracksDiv.style.display = "flex"; // Use 'flex' because your CSS has flex-direction: column
-            tracksDiv.classList.add('show'); // Add class for fade-in/slide-up animation
+            tracksDiv.style.display = "flex";
+            tracksDiv.classList.add('show');
+            tracksDiv.classList.add('wheelie'); // Add wheelie class when game starts
 
             countdownDiv.innerText = "";
             if (mainHeading) mainHeading.style.fontSize = "18px";
 
-            // IMPORTANT: Your server MUST emit an 'updateScores' event immediately
-            // after 'gameStarted' so the tracks and cars are drawn.
-            // Example Server-side logic:
-            // io.on('connection', (socket) => {
-            //   socket.on('startGame', (pin, maxTaps) => {
-            //     // ... game start logic ...
-            //     socket.emit('gameStarted');
-            //     // Immediately after, send initial scores to draw tracks
-            //     io.emit('updateScores', currentTeamsData); // Make sure currentTeamsData is populated
-            //   });
-            // });
+            body.classList.add('game-active'); // Add game active class to body
         });
 
         socket.on("invalidPin", () => {
@@ -457,15 +679,18 @@
         });
 
         socket.on("gameReset", () => {
-            document.getElementById("pinEntry").style.display = "block";
-            // Removed line for qrCode display
+            if (pinEntryDiv) pinEntryDiv.style.display = "flex";
+            if (qrCodeContainer) qrCodeContainer.style.display = "flex";
+            if (teamTableDiv) teamTableDiv.style.display = "flex"; // Ensure it's flex
+
             const teamList = document.getElementById("teamList");
             if (teamList) teamList.innerHTML = "";
 
             if (tracksDiv) {
                 tracksDiv.innerHTML = "";
                 tracksDiv.style.display = "none";
-                tracksDiv.classList.remove('show'); // Ensure animation class is removed on reset
+                tracksDiv.classList.remove('show');
+                tracksDiv.classList.remove('wheelie');
             }
 
             const pinStatus = document.getElementById("pinStatus");
@@ -478,35 +703,40 @@
             if (celebrationOverlay) celebrationOverlay.style.display = "none";
 
             if (mainHeading) mainHeading.style.fontSize = "24px";
-            // Removed loadQrCode() call
+
+            body.classList.remove('game-active');
         });
 
         socket.on("updateScores", (teamsData) => {
             const teamList = document.getElementById("teamList");
 
-            if (!teamList || !tracksDiv) return; // Use the tracksDiv reference
-
+            // Always update team list to show current participants and their scores
             teamList.innerHTML = "";
-            tracksDiv.innerHTML = ""; // Always clear tracks to redraw on updateScores
-
             for (let teamName in teamsData) {
                 const { score, color, members } = teamsData[teamName];
-                const progress = Math.min((score / MAX_TAPS) * 90, 90);
-
                 const row = document.createElement("tr");
-                row.innerHTML = `<td>${teamName}</td><td>${members.length}</td>`;
+                row.innerHTML = `<td>${teamName}</td><td>${members.length}</td>`; // Display member count
                 teamList.appendChild(row);
+            }
 
-                // Tracks are now always drawn if tracksDiv is visible
-                const track = document.createElement("div");
-                track.className = "track";
-                track.innerHTML = `
-                    <div class="car" style="left: ${progress}%; animation-delay: ${Math.random()}s;">
-                        ${generateCarSVG(color)}
-                    </div>
-                    <div class="finish-line"></div>
-                    <div class="lap-counter">Distance: ${score}/${MAX_TAPS}</div>`;
-                tracksDiv.appendChild(track);
+            // Only update tracks if the game has started (tracksDiv is visible)
+            if (tracksDiv && tracksDiv.style.display !== "none") {
+                tracksDiv.innerHTML = "";
+
+                for (let teamName in teamsData) {
+                    const { score, color, members } = teamsData[teamName];
+                    const progress = Math.min((score / MAX_TAPS) * 90, 90);
+
+                    const track = document.createElement("div");
+                    track.className = "track";
+                    track.innerHTML = `
+                        <div class="car" style="left: ${progress}%; animation-delay: ${Math.random()}s;">
+                            ${generateCarSVG(color)}
+                        </div>
+                        <div class="finish-line"></div>
+                        <div class="lap-counter">Distance: ${score}/${MAX_TAPS}</div>`;
+                    tracksDiv.appendChild(track);
+                }
             }
         });
 
@@ -521,6 +751,8 @@
                     overlay.style.display = "none";
                 }, 10000);
             }
+            tracksDiv.classList.remove('wheelie'); // Remove wheelie effect when game ends
+            body.classList.remove('game-active'); // Game is no longer active
         });
 
         function generateCarSVG(color) {
