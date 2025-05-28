@@ -28,6 +28,25 @@
             text-shadow: 2px 2px 4px #000;
         }
 
+        /* Connection Status */
+        #connectionStatus {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.8em;
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: white;
+        }
+
+        #connectionStatus.connected {
+            background-color: #2ecc71; /* Green */
+        }
+
+        #connectionStatus.disconnected {
+            background-color: #e74c3c; /* Red */
+        }
+
         /* HUD Container for Team and Position */
         #hudDisplay {
             position: absolute;
@@ -197,7 +216,6 @@
             box-shadow: 0 4px 0 #7f8c8d;
             cursor: not-allowed;
             transform: translateX(-50%) translateY(0);
-            /* Adjust text appearance for disabled state if needed, e.g., lower opacity */
             opacity: 0.8;
         }
 
@@ -234,6 +252,8 @@
 <body>
     <h1>CWP Rally: Player Console</h1>
 
+    <div id="connectionStatus">Connecting...</div>
+
     <div id="countdown"></div>
 
     <div id="gameVisual">
@@ -246,7 +266,7 @@
             </div>
     </div>
 
-    <button id="tapButton">Accelerate !</button>
+    <button id="tapButton">Please Wait...</button>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -257,6 +277,7 @@
         const countdownDiv = document.getElementById("countdown");
         const gameVisual = document.getElementById("gameVisual");
         const carContainer = document.getElementById("carContainer");
+        const connectionStatusDiv = document.getElementById("connectionStatus");
         let carSVGElement = null; // Reference to the SVG element
 
         // SVG for the car (top-down view)
@@ -292,13 +313,30 @@
             }
         });
 
-
-        // Hide TAP button and game visual initially
-        tapButton.style.display = "none";
-        tapButton.disabled = true; // Start disabled
-        tapButton.innerText = "Please Wait..."; // Set initial text
+        // Initial UI state
+        tapButton.style.display = "block"; // Always show the button, but initially disabled
+        tapButton.disabled = true;
+        tapButton.innerText = "Please Wait...";
         gameVisual.style.display = "none";
         countdownDiv.style.display = "none";
+
+        // Connection status updates
+        socket.on('connect', () => {
+            connectionStatusDiv.innerText = "Connected";
+            connectionStatusDiv.classList.remove('disconnected');
+            connectionStatusDiv.classList.add('connected');
+            socket.emit("requestTeam"); // Request team immediately upon connection
+        });
+
+        socket.on('disconnect', () => {
+            connectionStatusDiv.innerText = "Disconnected";
+            connectionStatusDiv.classList.remove('connected');
+            connectionStatusDiv.classList.add('disconnected');
+            tapButton.disabled = true; // Disable button on disconnect
+            tapButton.innerText = "Connection Lost!";
+            gameVisual.style.display = "none";
+            countdownDiv.style.display = "none";
+        });
 
         // When a team is assigned
         socket.on("assignedTeam", (team) => {
@@ -316,7 +354,6 @@
             green: '#2ecc71',
             yellow: '#f1c40f'
         };
-
 
         // Update scores and player position
         socket.on("updateScores", (teams) => {
@@ -341,9 +378,8 @@
         socket.on("gameStarted", () => {
             countdownDiv.style.display = "none";
             countdownDiv.innerText = ""; // Clear countdown message
-            tapButton.style.display = "block"; // Show TAP button
             tapButton.disabled = false; // Enable tap button
-            tapButton.innerText = "Accelerate!"; // Set text back to "Accelerate!"
+            tapButton.innerText = "Accelerate"; // Set text back to "Accelerate!"
             gameVisual.style.display = "block"; // Show highway and car
             // Ensure car is rendered with correct color and reference obtained if not already
             if (!carSVGElement) {
@@ -354,7 +390,6 @@
 
         // Handle game over event
         socket.on("gameOver", (winner) => {
-            tapButton.style.display = "none"; // Hide TAP button
             tapButton.disabled = true; // Disable tap button
             tapButton.innerText = "Game Over!"; // Can show "Game Over!" or "Please Wait..."
             gameVisual.style.display = "none"; // Hide highway
@@ -365,7 +400,6 @@
         socket.on("gameReset", () => {
             document.getElementById("team").innerText = "Team: ...";
             document.getElementById("position").innerText = "Position: ...";
-            tapButton.style.display = "none";
             tapButton.disabled = true;
             tapButton.innerText = "Please Wait..."; // Set text to "Please Wait..."
             countdownDiv.style.display = "none";
@@ -384,8 +418,6 @@
                 celebrationMusic.currentTime = 0;
             }
 
-            // Request a new team assignment after reset
-            socket.emit("requestTeam");
             // Clear car SVG element reference
             carSVGElement = null; 
         });

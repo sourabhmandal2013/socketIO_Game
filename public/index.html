@@ -149,46 +149,12 @@
             background-color: rgba(0, 0, 0, 0.4);
         }
 
-        #qrCode {
-            width: 250px;
-            text-align: center;
-            background-color: rgba(255, 255, 255, 0.05);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            min-width: 280px;
-        }
-
-        #qrCode img {
-            background-color: white;
-            padding: 10px;
-            border-radius: 5px;
-            width: 200px;
-            height: auto;
-            display: block;
-        }
-
-        #qrCode p {
-            margin: 0;
-            font-size: 1.1em;
-            color: #fff;
-        }
-
-        #qrError {
-            font-size: 0.8em;
-            color: red;
-            margin-top: 5px;
-        }
+        /* Removed QR code specific styles */
 
         #tracks {
             width: 100%;
             margin-top: 30px;
-            display: flex; /* Changed from 'none' initially to 'flex' in JS */
+            display: flex;
             flex-direction: column;
             gap: 20px;
             padding: 20px;
@@ -197,13 +163,12 @@
             box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.3);
             overflow-x: auto;
             flex-shrink: 0;
-            /* Added for smooth appearance */
             opacity: 0;
             transform: translateY(20px);
             transition: opacity 0.5s ease-out, transform 0.5s ease-out;
         }
 
-        #tracks.show { /* New class to trigger animation */
+        #tracks.show {
             opacity: 1;
             transform: translateY(0);
         }
@@ -306,8 +271,7 @@
                 align-items: center;
             }
 
-            #teamTable,
-            #qrCode {
+            #teamTable { /* Removed #qrCode from this selector */
                 width: 100%;
                 max-width: 500px;
             }
@@ -347,14 +311,7 @@
                 font-size: 0.9em;
             }
 
-            #qrCode {
-                padding: 15px;
-                width: 200px;
-            }
-
-            #qrCode img {
-                width: 150px;
-            }
+            /* Removed QR code specific media queries */
 
             .track {
                 height: 50px;
@@ -407,12 +364,7 @@
             </table>
         </div>
 
-        <div id="qrCode">
-            <img id="qrImageElement" alt="Scan to Join the Game" width="200" />
-            <p>Scan to join the game</p>
-            <p id="qrError" style="color:red; font-size: 0.8em;"></p>
         </div>
-    </div>
 
     <div id="tracks">
     </div>
@@ -435,33 +387,11 @@
 
         let MAX_TAPS = 100;
 
-        const hostname = "socket-io-game-khaki.vercel.app"
-
-        async function loadQrCode() {
-            const qrImageElement = document.getElementById('qrImageElement');
-            const qrErrorElement = document.getElementById('qrError');
-            qrErrorElement.textContent = '';
-            try {
-                const response = await fetch(hostname + '/api/qr-code');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                if (qrImageElement && data.qrDataUrl) {
-                    qrImageElement.src = data.qrDataUrl;
-                } else {
-                    console.error('QR image element not found or no data URL received.');
-                    qrErrorElement.textContent = 'Failed to load QR data.';
-                }
-            } catch (error) {
-                console.error('Error loading QR code:', error);
-                if (qrImageElement) qrImageElement.style.display = 'none';
-                qrErrorElement.textContent = 'Could not load QR code. Ensure server is running.';
-            }
-        }
+        // Removed hostname variable as it's only used for QR code
+        // Removed loadQrCode function as it's no longer needed
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadQrCode();
+            // Removed loadQrCode() call
         });
 
         function submitPin() {
@@ -482,12 +412,12 @@
 
             socket.emit("resetGame");
             if (mainHeading) mainHeading.style.fontSize = "24px";
-            loadQrCode();
+            // Removed loadQrCode() call
         }
 
         socket.on("requestPin", () => {
             document.getElementById("pinEntry").style.display = "block";
-            document.getElementById("qrCode").style.display = "flex";
+            // Removed line for qrCode display
             tracksDiv.style.display = "none"; // Ensure tracks are hidden when waiting for PIN
             tracksDiv.classList.remove('show'); // Remove animation class
             if (mainHeading) mainHeading.style.fontSize = "24px";
@@ -500,7 +430,7 @@
 
         socket.on("gameStarted", () => {
             document.getElementById("pinEntry").style.display = "none";
-            // document.getElementById("qrCode").style.display = "none"; // Uncomment to hide QR code on game start
+            // Removed line for qrCode display
 
             // Make the tracks div visible and apply the animation class
             tracksDiv.style.display = "flex"; // Use 'flex' because your CSS has flex-direction: column
@@ -528,7 +458,7 @@
 
         socket.on("gameReset", () => {
             document.getElementById("pinEntry").style.display = "block";
-            document.getElementById("qrCode").style.display = "flex";
+            // Removed line for qrCode display
             const teamList = document.getElementById("teamList");
             if (teamList) teamList.innerHTML = "";
 
@@ -548,7 +478,7 @@
             if (celebrationOverlay) celebrationOverlay.style.display = "none";
 
             if (mainHeading) mainHeading.style.fontSize = "24px";
-            loadQrCode();
+            // Removed loadQrCode() call
         });
 
         socket.on("updateScores", (teamsData) => {
@@ -585,7 +515,7 @@
             const overlay = document.getElementById("celebrationOverlay");
             const message = document.getElementById("celebrationMessage");
             if (overlay && message) {
-                message.innerHTML = `Team <span style="color: gold;">${winningTeam}</span> Wins!`;
+                message.innerHTML = `Team <span style="color: ${winningTeam};">${winningTeam}</span> Wins!`;
                 overlay.style.display = "flex";
                 setTimeout(() => {
                     overlay.style.display = "none";

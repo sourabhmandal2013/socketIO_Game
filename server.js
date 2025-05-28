@@ -3,7 +3,6 @@ const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const os = require('os');
-const QRCode = require('qrcode'); // Your existing QR code library
 
 const app = express();
 const server = http.createServer(app);
@@ -26,11 +25,11 @@ const TEAM_COLORS = {
 
 // Game state
 let teams = {};
-let gameOver = false;
+let gameOver = false; // This is the key flag to check if a game is running
 
 function resetTeams() {
     teams = {};
-    gameOver = false;
+    gameOver = true; // Set to true initially, no game is running
     TEAMS.forEach(team => {
         teams[team] = {
             members: [],
@@ -40,7 +39,7 @@ function resetTeams() {
     });
 }
 
-resetTeams();
+resetTeams(); // Initialize teams and set gameOver to true
 
 function getLocalIP() {
     const interfaces = os.networkInterfaces();
@@ -56,67 +55,78 @@ function getLocalIP() {
 
 const localIP = getLocalIP();
 
-// ---- REMOVE OLD QR CODE FILE GENERATION ----
-// const qrURL = `http://${localIP}:${port}/client.html`; // Use port variable
-// QRCode.toFile('public/qr_code.png', qrURL, (err) => {
-//  if (err) console.error("QR code error:", err);
-//  else console.log('QR code generated for', qrURL);
-// });
-// ---- END REMOVAL ----
-
-// ++++ ADD NEW API ENDPOINT FOR QR CODE DATA URL ++++
-app.get('/api/qr-code', async (req, res) => {
-    try {
-        // Construct the URL that the QR code will point to.
-        // This should be the URL for your player client page (client.html).
-        // It uses the server's local IP and configured port.
-        // For true "public URL" in production, you might need to use req.headers.host
-        // or environment variables provided by your deployment platform.
-        const hostname = "socket-io-game-khaki.vercel.app"
-        const clientAccessURL = `http://${hostname}/client.html`;
-
-        const dataUrl = await QRCode.toDataURL(clientAccessURL);
-        res.json({ qrDataUrl: dataUrl }); // Send the Data URL as JSON
-    } catch (err) {
-        console.error("Failed to generate QR code data URL:", err);
-        res.status(500).json({ error: "Failed to generate QR code" });
-    }
-});
-// ++++ END NEW API ENDPOINT ++++
-
 io.on('connection', (socket) => {
     console.log('New player connected or admin console loaded');
 
-    // Assign team logic (primarily for players)
-    if (!socket.handshake.headers.referer || !socket.handshake.headers.referer.endsWith('index.html')) { // Basic check if not admin
-        const assignedTeam = TEAMS.reduce((a, b) =>
-            teams[a].members.length <= teams[b].members.length ? a : b
-        );
-        if (teams[assignedTeam]) {
-            teams[assignedTeam].members.push(socket.id);
-            socket.team = assignedTeam;
-            socket.emit('assignedTeam', assignedTeam);
+    // Determine if it's an admin connection or a player connection based on referer
+    const isClientPlayer = !socket.handshake.headers.referer || !socket.handshake.headers.referer.endsWith('index.html');
+
+    if (isClientPlayer) {
+        // This is a player client
+        console.log(`Player client connected. Game over status: ${gameOver}`);
+
+        if (!gameOver) { // If a game is currently running
+            const assignedTeam = TEAMS.reduce((a, b) =>
+                teams[a].members.length <= teams[b].members.length ? a : b
+            );
+            if (teams[assignedTeam]) {
+                teams[assignedTeam].members.push(socket.id);
+                socket.team = assignedTeam;
+                socket.emit('assignedTeam', assignedTeam);
+                // Immediately send gameStarted to this new player
+                socket.emit('gameStarted');
+                io.emit('updateScores', teams); // Update everyone
+            }
+        } else {
+            // If game is not running, player stays in "Please Wait" state.
+            // No need to assign a team or send gameStarted immediately.
+            console.log('Game not active. Player will wait for game to start.');
+            // The client-side will naturally stay in 'Please Wait...' state
+            // until 'gameStarted' is received.
         }
+    } else {
+        // This is likely the admin console
+        socket.emit('requestPin');
     }
     
-    io.emit('updateScores', teams); // Update everyone
-    
-    // For admin console, 'requestPin' implies it's the admin page.
-    // Or, you can have a specific event from admin to request initial data.
-    // For now, 'requestPin' is used by the admin page.
-    // The QR code itself is fetched via HTTP GET, not specifically tied to socket connection here.
-    socket.emit('requestPin');
+    // For all connections, ensure they have the latest scores.
+    // This is important for both players (to see their position) and admin.
+    io.emit('updateScores', teams);
 
 
     socket.on('startGame', (pin, newMaxTaps) => {
         if (pin === GAME_PIN) {
             const parsedTaps = parseInt(newMaxTaps);
-            MAX_TAPS = isNaN(parsedTaps) || parsedTaps <= 0 ? 100 : parsedTaps; // Corrected: ensure MAX_TAPS > 0
+            MAX_TAPS = isNaN(parsedTaps) || parsedTaps <= 0 ? 100 : parsedTaps;
 
+            // Reset scores for all teams
             Object.keys(teams).forEach(team => {
                 teams[team].score = 0;
             });
-            gameOver = false;
+            gameOver = false; // Game is now running!
+
+            // Ensure all players are re-assigned and updated
+            // This is crucial if players connected while no game was running
+            // or if some players disconnected and reconnected.
+            TEAMS.forEach(teamName => {
+                teams[teamName].members = []; // Clear old members
+            });
+
+            // Re-assign all *currently connected* players to balance teams
+            // (Only for actual client players, not admin sockets)
+            io.sockets.sockets.forEach((s) => {
+                if (!s.handshake.headers.referer || !s.handshake.headers.referer.endsWith('index.html')) {
+                    const assignedTeam = TEAMS.reduce((a, b) =>
+                        teams[a].members.length <= teams[b].members.length ? a : b
+                    );
+                    if (teams[assignedTeam]) {
+                        teams[assignedTeam].members.push(s.id);
+                        s.team = assignedTeam;
+                        s.emit('assignedTeam', assignedTeam);
+                    }
+                }
+            });
+
 
             io.emit('updateScores', teams);
 
@@ -127,6 +137,9 @@ io.on('connection', (socket) => {
                 if (countdown < 0) {
                     clearInterval(countdownInterval);
                     io.emit('gameStarted');
+                    // Server must emit an 'updateScores' event immediately after 'gameStarted'
+                    // so the tracks and cars are drawn on the admin console.
+                    io.emit('updateScores', teams);
                 }
             }, 1000);
         } else {
@@ -142,32 +155,38 @@ io.on('connection', (socket) => {
 
         io.emit('updateScores', teams);
 
-        if (MAX_TAPS && team.score >= MAX_TAPS) { // Check if MAX_TAPS is defined
-            gameOver = true;
+        if (MAX_TAPS && team.score >= MAX_TAPS) {
+            gameOver = true; // Game is over!
             announceWinner(socket.team);
         }
     });
 
     socket.on('resetGame', () => {
         console.log('Game reset requested');
-        resetTeams();
+        resetTeams(); // This sets gameOver back to true
         io.emit('updateScores', teams);
         io.emit('gameReset'); // This will trigger pinEntry display on admin
-        // The admin console will fetch a new QR code if the page is reloaded or
-        // if you implement a specific QR refresh logic.
+        // Players will return to "Please Wait" as gameOver is true
     });
     
-    // This 'requestTeam' seems to be for re-assigning or late joining players,
-    // ensure it works correctly with your client-side logic.
     socket.on('requestTeam', () => {
-        const assignedTeam = TEAMS.reduce((a, b) =>
-            teams[a].members.length < teams[b].members.length ? a : b
-        );
-        if (teams[assignedTeam]) {
-            teams[assignedTeam].members.push(socket.id);
-            socket.team = assignedTeam;
-            socket.emit('assignedTeam', assignedTeam);
-            io.emit('updateScores', teams);
+        // This event should now be used less frequently, as initial team assignment happens on connect
+        // But keep it for explicit client requests if needed (e.g., re-joining logic)
+        if (!gameOver) { // Only assign if game is running
+            const assignedTeam = TEAMS.reduce((a, b) =>
+                teams[a].members.length < teams[b].members.length ? a : b
+            );
+            if (teams[assignedTeam]) {
+                // Remove from old team if already assigned
+                if (socket.team && teams[socket.team]) {
+                    teams[socket.team].members = teams[socket.team].members.filter(id => id !== socket.id);
+                }
+                teams[assignedTeam].members.push(socket.id);
+                socket.team = assignedTeam;
+                socket.emit('assignedTeam', assignedTeam);
+                io.emit('updateScores', teams);
+                socket.emit('gameStarted'); // Re-send game started if game is running
+            }
         }
     });
     
@@ -187,5 +206,5 @@ function announceWinner(winningTeam) {
 server.listen(port, () => {
     console.log(`Server running at http://${localIP}:${port}`);
     console.log(`Admin console typically at: http://${localIP}:${port}/ or http://${localIP}:${port}/index.html`);
-    console.log(`Player client page (for QR code): http://${localIP}:${port}/client.html`);
+    console.log(`Player client page: http://${localIP}:${port}/client.html`);
 });
