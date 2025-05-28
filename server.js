@@ -72,7 +72,8 @@ app.get('/api/qr-code', async (req, res) => {
         // It uses the server's local IP and configured port.
         // For true "public URL" in production, you might need to use req.headers.host
         // or environment variables provided by your deployment platform.
-        const clientAccessURL = `http://${localIP}:${port}/client.html`;
+        const hostname = "socket-io-game-khaki.vercel.app"
+        const clientAccessURL = `http://${hostname}/client.html`;
 
         const dataUrl = await QRCode.toDataURL(clientAccessURL);
         res.json({ qrDataUrl: dataUrl }); // Send the Data URL as JSON

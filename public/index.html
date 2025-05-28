@@ -435,12 +435,14 @@
 
         let MAX_TAPS = 100;
 
+        const hostname = "socket-io-game-khaki.vercel.app"
+
         async function loadQrCode() {
             const qrImageElement = document.getElementById('qrImageElement');
             const qrErrorElement = document.getElementById('qrError');
             qrErrorElement.textContent = '';
             try {
-                const response = await fetch('/api/qr-code');
+                const response = await fetch(hostname + '/api/qr-code');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
