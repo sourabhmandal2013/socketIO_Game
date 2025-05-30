@@ -609,7 +609,7 @@
         const qrCodeContainer = document.getElementById("qrCodeContainer");
         const pinEntryDiv = document.getElementById("pinEntry");
         const teamTableDiv = document.getElementById("teamTable");
-        const body = document.body; // Get body element for class manipulation
+        const body = document.body; 
 
         let MAX_TAPS = 100;
 
@@ -626,27 +626,27 @@
         function resetGame() {
             tracksDiv.style.display = "none";
             tracksDiv.classList.remove('show');
-            tracksDiv.classList.remove('wheelie'); // Remove wheelie class on reset
+            tracksDiv.classList.remove('wheelie'); 
             tracksDiv.innerHTML = "";
 
             socket.emit("resetGame");
             if (mainHeading) mainHeading.style.fontSize = "24px";
 
-            // Show all dashboard elements on reset
+            
             if (qrCodeContainer) qrCodeContainer.style.display = "flex";
             if (pinEntryDiv) pinEntryDiv.style.display = "flex";
-            if (teamTableDiv) teamTableDiv.style.display = "flex"; // Ensure it's flex for dashboard segment
+            if (teamTableDiv) teamTableDiv.style.display = "flex"; 
 
-            body.classList.remove('game-active'); // Remove game active class from body
+            body.classList.remove('game-active'); 
         }
 
         socket.on("requestPin", () => {
             if (pinEntryDiv) pinEntryDiv.style.display = "flex";
             if (qrCodeContainer) qrCodeContainer.style.display = "flex";
-            if (teamTableDiv) teamTableDiv.style.display = "flex"; // Ensure it's flex
+            if (teamTableDiv) teamTableDiv.style.display = "flex";
             tracksDiv.style.display = "none";
             tracksDiv.classList.remove('show');
-            tracksDiv.classList.remove('wheelie'); // Ensure wheelie is off
+            tracksDiv.classList.remove('wheelie'); 
             if (mainHeading) mainHeading.style.fontSize = "24px";
 
             body.classList.remove('game-active');
@@ -655,23 +655,22 @@
         socket.on("countdown", (seconds) => {
             raceStartMusic.play();
             countdownDiv.innerText = `Game starting in ${seconds}...`;
-            if (pinEntryDiv) pinEntryDiv.style.display = "none"; // Hide pin entry during countdown
-            // Keep QR and Table visible
+            if (pinEntryDiv) pinEntryDiv.style.display = "none";
         });
 
         socket.on("gameStarted", () => {
             if (pinEntryDiv) pinEntryDiv.style.display = "none";
-            // Keep QR and Table visible
-            // The dashboard area will shrink and rearrange via CSS when body.game-active is set
+            
+            
 
             tracksDiv.style.display = "flex";
             tracksDiv.classList.add('show');
-            tracksDiv.classList.add('wheelie'); // Add wheelie class when game starts
+            tracksDiv.classList.add('wheelie'); 
 
             countdownDiv.innerText = "";
             if (mainHeading) mainHeading.style.fontSize = "18px";
 
-            body.classList.add('game-active'); // Add game active class to body
+            body.classList.add('game-active'); 
         });
 
         socket.on("invalidPin", () => {
@@ -681,7 +680,7 @@
         socket.on("gameReset", () => {
             if (pinEntryDiv) pinEntryDiv.style.display = "flex";
             if (qrCodeContainer) qrCodeContainer.style.display = "flex";
-            if (teamTableDiv) teamTableDiv.style.display = "flex"; // Ensure it's flex
+            if (teamTableDiv) teamTableDiv.style.display = "flex"; 
 
             const teamList = document.getElementById("teamList");
             if (teamList) teamList.innerHTML = "";
@@ -710,16 +709,14 @@
         socket.on("updateScores", (teamsData) => {
             const teamList = document.getElementById("teamList");
 
-            // Always update team list to show current participants and their scores
+            
             teamList.innerHTML = "";
             for (let teamName in teamsData) {
                 const { score, color, members } = teamsData[teamName];
                 const row = document.createElement("tr");
-                row.innerHTML = `<td>${teamName}</td><td>${members.length}</td>`; // Display member count
+                row.innerHTML = `<td>${teamName}</td><td>${members.length}</td>`;
                 teamList.appendChild(row);
             }
-
-            // Only update tracks if the game has started (tracksDiv is visible)
             if (tracksDiv && tracksDiv.style.display !== "none") {
                 tracksDiv.innerHTML = "";
 
@@ -751,8 +748,8 @@
                     overlay.style.display = "none";
                 }, 10000);
             }
-            tracksDiv.classList.remove('wheelie'); // Remove wheelie effect when game ends
-            body.classList.remove('game-active'); // Game is no longer active
+            tracksDiv.classList.remove('wheelie');
+            body.classList.remove('game-active');
         });
 
         function generateCarSVG(color) {

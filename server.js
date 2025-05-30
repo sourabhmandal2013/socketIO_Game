@@ -2,19 +2,16 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const os = require('os'); // Re-import the os module
+const os = require('os'); 
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
 const port = process.env.PORT || 8080;
-// We will determine the 'host' dynamically for console logging
-// The server will listen on 0.0.0.0 by default when host is omitted in listen()
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Game configuration
 let MAX_TAPS;
 const GAME_PIN = 'a689475';
 const TEAMS = ['red', 'blue', 'green', 'yellow'];
@@ -25,13 +22,12 @@ const TEAM_COLORS = {
     yellow: '#f1c40f'
 };
 
-// Game state
 let teams = {};
-let gameOver = false; // This is the key flag to check if a game is running
+let gameOver = false;
 
 function resetTeams() {
     teams = {};
-    gameOver = true; // Set to true initially, no game is running
+    gameOver = true;
     TEAMS.forEach(team => {
         teams[team] = {
             members: [],
@@ -41,9 +37,8 @@ function resetTeams() {
     });
 }
 
-resetTeams(); // Initialize teams and set gameOver to true
+resetTeams();
 
-// Function to get the local non-loopback IPv4 address
 function getNetworkIP() {
     const interfaces = os.networkInterfaces();
     for (const ifaceName in interfaces) {
@@ -54,22 +49,20 @@ function getNetworkIP() {
             }
         }
     }
-    return 'localhost'; // Fallback if no external IP is found
+    return 'localhost';
 }
 
-const displayHost = getNetworkIP(); // Get the IP for display purposes
+const displayHost = getNetworkIP();
 
 io.on('connection', (socket) => {
     console.log('New player connected or admin console loaded');
 
-    // Determine if it's an admin connection or a player connection based on referer
     const isClientPlayer = !socket.handshake.headers.referer || !socket.handshake.headers.referer.endsWith('index.html');
 
     if (isClientPlayer) {
-        // This is a player client
         console.log(`Player client connected. Game over status: ${gameOver}`);
 
-        if (!gameOver) { // If a game is currently running
+        if (!gameOver) {
             const assignedTeam = TEAMS.reduce((a, b) =>
                 teams[a].members.length <= teams[b].members.length ? a : b
             );
@@ -77,20 +70,16 @@ io.on('connection', (socket) => {
                 teams[assignedTeam].members.push(socket.id);
                 socket.team = assignedTeam;
                 socket.emit('assignedTeam', assignedTeam);
-                // Immediately send gameStarted to this new player
                 socket.emit('gameStarted');
-                io.emit('updateScores', teams); // Update everyone
+                io.emit('updateScores', teams); 
             }
         } else {
-            // If game is not running, player stays in "Please Wait" state.
             console.log('Game not active. Player will wait for game to start.');
         }
     } else {
-        // This is likely the admin console
         socket.emit('requestPin');
     }
     
-    // For all connections, ensure they have the latest scores.
     io.emit('updateScores', teams);
 
     socket.on('startGame', (pin, newMaxTaps) => {
@@ -98,18 +87,16 @@ io.on('connection', (socket) => {
             const parsedTaps = parseInt(newMaxTaps);
             MAX_TAPS = isNaN(parsedTaps) || parsedTaps <= 0 ? 100 : parsedTaps;
 
-            // Reset scores for all teams
             Object.keys(teams).forEach(team => {
                 teams[team].score = 0;
             });
-            gameOver = false; // Game is now running!
+            gameOver = false;
 
-            // Ensure all players are re-assigned and updated
             TEAMS.forEach(teamName => {
-                teams[teamName].members = []; // Clear old members
+                teams[teamName].members = []; 
             });
 
-            // Re-assign all *currently connected* players to balance teams
+            
             io.sockets.sockets.forEach((s) => {
                 if (!s.handshake.headers.referer || !s.handshake.headers.referer.endsWith('index.html')) {
                     const assignedTeam = TEAMS.reduce((a, b) =>
@@ -149,20 +136,20 @@ io.on('connection', (socket) => {
         io.emit('updateScores', teams);
 
         if (MAX_TAPS && team.score >= MAX_TAPS) {
-            gameOver = true; // Game is over!
+            gameOver = true;
             announceWinner(socket.team);
         }
     });
 
     socket.on('resetGame', () => {
         console.log('Game reset requested');
-        resetTeams(); // This sets gameOver back to true
+        resetTeams();
         io.emit('updateScores', teams);
-        io.emit('gameReset'); // This will trigger pinEntry display on admin
+        io.emit('gameReset');
     });
     
     socket.on('requestTeam', () => {
-        if (!gameOver) { // Only assign if game is running
+        if (!gameOver) {
             const assignedTeam = TEAMS.reduce((a, b) =>
                 teams[a].members.length < teams[b].members.length ? a : b
             );
@@ -193,8 +180,6 @@ function announceWinner(winningTeam) {
 }
 
 server.listen(port, () => {
-    // When host is omitted, listen defaults to 0.0.0.0 (all available IPv4 interfaces)
-    // or :: (all available IPv6 interfaces)
     console.log(`Server listening on port ${port}`);
     console.log(`Access at: http://${displayHost}:${port}/`);
     console.log(`Admin console typically at: http://${displayHost}:${port}/index.html`);

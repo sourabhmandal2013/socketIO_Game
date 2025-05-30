@@ -278,9 +278,8 @@
         const gameVisual = document.getElementById("gameVisual");
         const carContainer = document.getElementById("carContainer");
         const connectionStatusDiv = document.getElementById("connectionStatus");
-        let carSVGElement = null; // Reference to the SVG element
+        let carSVGElement = null; 
 
-        // SVG for the car (top-down view)
         function generateCarSVG(color) {
             const carPathData = "M29.395,0H17.636c-3.117,0-5.643,3.467-5.643,6.584v34.804c0,3.116,2.526,5.644,5.643,5.644h11.759c3.116,0,5.644-2.527,5.644-5.644V6.584C35.037,3.467,32.511,0,29.395,0z M34.05,14.188v11.665l-2.729,0.351v-4.806L34.05,14.188z M32.618,10.773c-1.016,3.9-2.219,8.51-2.219,8.51H16.631l-2.222-8.51C14.41,10.773,23.293,7.755,32.618,10.773z M15.741,21.713v4.492l-2.73-0.349V14.502L15.741,21.713z M13.011,37.938V27.579l2.73,0.343v8.196L13.011,37.938z M14.568,40.882l2.218-3.336h13.771l2.219,3.336H14.568z M31.321,35.805v-7.872l2.729-0.355v10.048L31.321,35.805z";
 
@@ -293,61 +292,54 @@
             `;
         }
 
-        // Event listener for the tap button
         tapButton.addEventListener("click", () => {
             socket.emit("tap");
-            // Trigger car bounce animation
+            
             if (carSVGElement) {
-                // Remove the class first to restart animation if rapidly tapped
                 carSVGElement.classList.remove('car-tapped');
-                // Force reflow to ensure animation restarts (important for rapid clicks)
                 void carSVGElement.offsetWidth;
                 carSVGElement.classList.add('car-tapped');
             }
         });
 
-        // Event listener for when the car animation ends
         carContainer.addEventListener('animationend', (event) => {
             if (event.animationName === 'carBounce' && carSVGElement) {
                 carSVGElement.classList.remove('car-tapped');
             }
         });
 
-        // Initial UI state
-        tapButton.style.display = "block"; // Always show the button, but initially disabled
+        tapButton.style.display = "block"; 
         tapButton.disabled = true;
         tapButton.innerText = "Please Wait...";
         gameVisual.style.display = "none";
         countdownDiv.style.display = "none";
 
-        // Connection status updates
         socket.on('connect', () => {
             connectionStatusDiv.innerText = "Connected";
             connectionStatusDiv.classList.remove('disconnected');
             connectionStatusDiv.classList.add('connected');
-            socket.emit("requestTeam"); // Request team immediately upon connection
+            socket.emit("requestTeam"); 
         });
 
         socket.on('disconnect', () => {
             connectionStatusDiv.innerText = "Disconnected";
             connectionStatusDiv.classList.remove('connected');
             connectionStatusDiv.classList.add('disconnected');
-            tapButton.disabled = true; // Disable button on disconnect
+            tapButton.disabled = true;
             tapButton.innerText = "Connection Lost!";
             gameVisual.style.display = "none";
             countdownDiv.style.display = "none";
         });
 
-        // When a team is assigned
         socket.on("assignedTeam", (team) => {
             myTeam = team;
-            console.log("Assigned to team:", team); // Debug log
+            console.log("Assigned to team:", team); 
             document.getElementById("team").innerText = `Team: ${team}`;
-            carContainer.innerHTML = generateCarSVG(myTeamColors[team]); // Set car color
-            carSVGElement = carContainer.querySelector('.bouncing-car'); // Get reference to the SVG
+            carContainer.innerHTML = generateCarSVG(myTeamColors[team]); 
+            carSVGElement = carContainer.querySelector('.bouncing-car'); 
         });
 
-        // Map team names to colors for client-side rendering
+        
         const myTeamColors = {
             red: '#e74c3c',
             blue: '#3498db',
@@ -355,59 +347,58 @@
             yellow: '#f1c40f'
         };
 
-        // Update scores and player position
+        
         socket.on("updateScores", (teams) => {
-            // Sort teams by score in descending order
+            
             const sortedTeams = Object.entries(teams).sort((a, b) => b[1].score - a[1].score);
 
-            // Find the current player's team position
+           
             const position = sortedTeams.findIndex(([teamName]) => teamName === myTeam) + 1;
             document.getElementById("position").innerText = `Position: ${position}`;
         });
 
-        // Handle game start countdown
+        
         socket.on("countdown", (seconds) => {
             countdownDiv.style.display = "block";
             countdownDiv.innerText = `Game starting in ${seconds}...`;
-            tapButton.disabled = true; // Disable tap button during countdown
-            tapButton.innerText = "Please Wait..."; // Set text to "Please Wait..."
-            gameVisual.style.display = "none"; // Hide highway during countdown
+            tapButton.disabled = true; 
+            tapButton.innerText = "Please Wait...";
+            gameVisual.style.display = "none";
         });
 
-        // Handle game started event
+        
         socket.on("gameStarted", () => {
             countdownDiv.style.display = "none";
-            countdownDiv.innerText = ""; // Clear countdown message
-            tapButton.disabled = false; // Enable tap button
-            tapButton.innerText = "Accelerate"; // Set text back to "Accelerate!"
-            gameVisual.style.display = "block"; // Show highway and car
-            // Ensure car is rendered with correct color and reference obtained if not already
+            countdownDiv.innerText = ""; 
+            tapButton.disabled = false;
+            tapButton.innerText = "Accelerate"; 
+            gameVisual.style.display = "block"; 
+            
             if (!carSVGElement) {
                 carContainer.innerHTML = generateCarSVG(myTeamColors[myTeam]);
                 carSVGElement = carContainer.querySelector('.bouncing-car');
             }
         });
 
-        // Handle game over event
+        
         socket.on("gameOver", (winner) => {
-            tapButton.disabled = true; // Disable tap button
-            tapButton.innerText = "Game Over!"; // Can show "Game Over!" or "Please Wait..."
-            gameVisual.style.display = "none"; // Hide highway
+            tapButton.disabled = true; 
+            tapButton.innerText = "Game Over!"; 
+            gameVisual.style.display = "none";
             alert(`Game Over! Winning team: ${winner}`);
         });
 
-        // Handle game reset event
+        
         socket.on("gameReset", () => {
             document.getElementById("team").innerText = "Team: ...";
             document.getElementById("position").innerText = "Position: ...";
             tapButton.disabled = true;
-            tapButton.innerText = "Please Wait..."; // Set text to "Please Wait..."
+            tapButton.innerText = "Please Wait..."; 
             countdownDiv.style.display = "none";
             countdownDiv.innerText = "";
-            gameVisual.style.display = "none"; // Hide highway on reset
+            gameVisual.style.display = "none"; 
 
-            // Assuming backgroundMusic and celebrationMusic are defined globally or accessible here
-            // You might need to define these audio elements in your HTML if they are not already.
+        
             if (typeof backgroundMusic !== "undefined") {
                 backgroundMusic.currentTime = 0;
                 backgroundMusic.play();
@@ -418,7 +409,7 @@
                 celebrationMusic.currentTime = 0;
             }
 
-            // Clear car SVG element reference
+            
             carSVGElement = null; 
         });
     </script>
