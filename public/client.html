@@ -175,6 +175,47 @@
             100% { transform: translateY(0); }
         }
 
+        /* Skill Bar Styling */
+        #skillBarContainer {
+            position: absolute;
+            bottom: 10px; /* Position above the button */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%; /* Match button width */
+            max-width: 250px;
+            height: 20px;
+            background-color: #e74c3c; /* Red bar */
+            border-radius: 5px;
+            overflow: hidden;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: none; /* Hidden by default */
+        }
+
+        #greenWindow {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            background-color: #2ecc71; /* Green window */
+        }
+
+        #skillPointer {
+            position: absolute;
+            top: 0;
+            width: 8px; /* Pointer width */
+            height: 100%;
+            background-color: #fff; /* White pointer */
+            border-radius: 2px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        /* Pointer oscillation animation */
+        @keyframes pointerOscillate {
+            0% { left: 0%; }
+            50% { left: calc(100% - 8px); } /* 100% minus pointer width */
+            100% { left: 0%; }
+        }
+
         /* --- Accelerate Button Styling (Overlay, shorter) --- */
         #tapButton {
             position: fixed;
@@ -241,6 +282,9 @@
                 height: 60vh;
                 width: 200px;
             }
+            #skillBarContainer {
+                max-width: 300px; /* Slightly wider for larger screens */
+            }
             #tapButton {
                 width: 200px;
                 height: 90px;
@@ -263,7 +307,11 @@
         </div>
         <div id="highway"></div>
         <div id="carContainer">
-            </div>
+        </div>
+        <div id="skillBarContainer">
+            <div id="greenWindow"></div>
+            <div id="skillPointer"></div>
+        </div>
     </div>
 
     <button id="tapButton">Please Wait...</button>
@@ -278,8 +326,13 @@
         const gameVisual = document.getElementById("gameVisual");
         const carContainer = document.getElementById("carContainer");
         const connectionStatusDiv = document.getElementById("connectionStatus");
-        let carSVGElement = null; 
+        const skillBarContainer = document.getElementById("skillBarContainer");
+        const greenWindow = document.getElementById("greenWindow");
+        const skillPointer = document.getElementById("skillPointer");
+        let carSVGElement = null;
+        let pointerAnimation = null; // To control the pointer animation
 
+        // Function to generate car SVG
         function generateCarSVG(color) {
             const carPathData = "M29.395,0H17.636c-3.117,0-5.643,3.467-5.643,6.584v34.804c0,3.116,2.526,5.644,5.643,5.644h11.759c3.116,0,5.644-2.527,5.644-5.644V6.584C35.037,3.467,32.511,0,29.395,0z M34.05,14.188v11.665l-2.729,0.351v-4.806L34.05,14.188z M32.618,10.773c-1.016,3.9-2.219,8.51-2.219,8.51H16.631l-2.222-8.51C14.41,10.773,23.293,7.755,32.618,10.773z M15.741,21.713v4.492l-2.73-0.349V14.502L15.741,21.713z M13.011,37.938V27.579l2.73,0.343v8.196L13.011,37.938z M14.568,40.882l2.218-3.336h13.771l2.219,3.336H14.568z M31.321,35.805v-7.872l2.729-0.355v10.048L31.321,35.805z";
 
@@ -292,14 +345,71 @@
             `;
         }
 
+        // Function to set a new random green window and start pointer animation
+        function setupSkillBar() {
+            const skillBarWidth = skillBarContainer.offsetWidth;
+            const greenWindowWidth = skillBarWidth * 0.1; // 10% of the bar width
+
+            // Random start position for the green window (ensuring it stays within bounds)
+            const maxLeft = skillBarWidth - greenWindowWidth;
+            const randomLeft = Math.random() * maxLeft;
+
+            greenWindow.style.width = `${greenWindowWidth}px`;
+            greenWindow.style.left = `${randomLeft}px`;
+
+            // Clear previous animation if any
+            if (pointerAnimation) {
+                pointerAnimation.cancel();
+            }
+
+            // Start pointer oscillation animation
+            pointerAnimation = skillPointer.animate(
+                [
+                    { left: '0%' },
+                    { left: `calc(100% - ${skillPointer.offsetWidth}px)` }
+                ],
+                {
+                    duration: 1500, // Adjust speed as needed
+                    iterations: Infinity,
+                    direction: 'alternate',
+                    easing: 'linear'
+                }
+            );
+        }
+
         tapButton.addEventListener("click", () => {
-												setTimeout(socket.emit("tap"), 2000)
-            
+            if (tapButton.disabled) return; // Prevent taps if button is disabled
+
             if (carSVGElement) {
                 carSVGElement.classList.remove('car-tapped');
-                void carSVGElement.offsetWidth;
+                void carSVGElement.offsetWidth; // Trigger reflow
                 carSVGElement.classList.add('car-tapped');
             }
+
+            // Check if pointer is in the green window
+            const pointerRect = skillPointer.getBoundingClientRect();
+            const greenWindowRect = greenWindow.getBoundingClientRect();
+
+            const isGenuineTap = (
+                pointerRect.left >= greenWindowRect.left &&
+                pointerRect.right <= greenWindowRect.right
+            );
+
+            if (isGenuineTap) {
+                socket.emit("tap");
+                console.log("Genuine tap!");
+                // Optional: Add visual/audio feedback for genuine tap
+                tapButton.innerText = "NICE!";
+                setTimeout(() => tapButton.innerText = "Accelerate", 300);
+            } else {
+                console.log("Missed tap!");
+                // Optional: Add visual/audio feedback for missed tap
+                 tapButton.innerText = "MISSED!";
+                setTimeout(() => tapButton.innerText = "Accelerate", 300);
+            }
+
+            // After a tap (genuine or missed), reset the skill bar for a new challenge
+            setupSkillBar();
         });
 
         carContainer.addEventListener('animationend', (event) => {
@@ -308,17 +418,19 @@
             }
         });
 
-        tapButton.style.display = "block"; 
+        // Initial setup for UI elements
+        tapButton.style.display = "block";
         tapButton.disabled = true;
         tapButton.innerText = "Please Wait...";
         gameVisual.style.display = "none";
         countdownDiv.style.display = "none";
+        skillBarContainer.style.display = "none"; // Hide skill bar initially
 
         socket.on('connect', () => {
             connectionStatusDiv.innerText = "Connected";
             connectionStatusDiv.classList.remove('disconnected');
             connectionStatusDiv.classList.add('connected');
-            socket.emit("requestTeam"); 
+            socket.emit("requestTeam");
         });
 
         socket.on('disconnect', () => {
@@ -329,17 +441,12 @@
             tapButton.innerText = "Connection Lost!";
             gameVisual.style.display = "none";
             countdownDiv.style.display = "none";
+            skillBarContainer.style.display = "none";
+            if (pointerAnimation) {
+                pointerAnimation.cancel();
+            }
         });
 
-        socket.on("assignedTeam", (team) => {
-            myTeam = team;
-            console.log("Assigned to team:", team); 
-            document.getElementById("team").innerText = `Team: ${team}`;
-            carContainer.innerHTML = generateCarSVG(myTeamColors[team]); 
-            carSVGElement = carContainer.querySelector('.bouncing-car'); 
-        });
-
-        
         const myTeamColors = {
             red: '#e74c3c',
             blue: '#3498db',
@@ -347,58 +454,68 @@
             yellow: '#f1c40f'
         };
 
-        
-        socket.on("updateScores", (teams) => {
-            
-            const sortedTeams = Object.entries(teams).sort((a, b) => b[1].score - a[1].score);
+        socket.on("assignedTeam", (team) => {
+            myTeam = team;
+            console.log("Assigned to team:", team);
+            document.getElementById("team").innerText = `Team: ${team}`;
+            carContainer.innerHTML = generateCarSVG(myTeamColors[team]);
+            carSVGElement = carContainer.querySelector('.bouncing-car');
+        });
 
-           
+        socket.on("updateScores", (teams) => {
+            const sortedTeams = Object.entries(teams).sort((a, b) => b[1].score - a[1].score);
             const position = sortedTeams.findIndex(([teamName]) => teamName === myTeam) + 1;
             document.getElementById("position").innerText = `Position: ${position}`;
         });
 
-        
         socket.on("countdown", (seconds) => {
             countdownDiv.style.display = "block";
             countdownDiv.innerText = `Game starting in ${seconds}...`;
-            tapButton.disabled = true; 
+            tapButton.disabled = true;
             tapButton.innerText = "Please Wait...";
             gameVisual.style.display = "none";
+            skillBarContainer.style.display = "none";
+            if (pointerAnimation) {
+                pointerAnimation.cancel();
+            }
         });
 
-        
         socket.on("gameStarted", () => {
             countdownDiv.style.display = "none";
-            countdownDiv.innerText = ""; 
+            countdownDiv.innerText = "";
             tapButton.disabled = false;
-            tapButton.innerText = "Accelerate"; 
-            gameVisual.style.display = "block"; 
-            
+            tapButton.innerText = "Accelerate";
+            gameVisual.style.display = "block";
+            skillBarContainer.style.display = "block"; // Show skill bar when game starts
+
             if (!carSVGElement) {
                 carContainer.innerHTML = generateCarSVG(myTeamColors[myTeam]);
                 carSVGElement = carContainer.querySelector('.bouncing-car');
             }
+            setupSkillBar(); // Initialize skill bar on game start
         });
 
-        
         socket.on("gameOver", (winner) => {
-            tapButton.disabled = true; 
-            tapButton.innerText = "Game Over!"; 
+            tapButton.disabled = true;
+            tapButton.innerText = "Game Over!";
             gameVisual.style.display = "none";
+            skillBarContainer.style.display = "none";
+            if (pointerAnimation) {
+                pointerAnimation.cancel();
+            }
             alert(`Game Over! Winning team: ${winner}`);
         });
 
-        
         socket.on("gameReset", () => {
             document.getElementById("team").innerText = "Team: ...";
             document.getElementById("position").innerText = "Position: ...";
             tapButton.disabled = true;
-            tapButton.innerText = "Please Wait..."; 
+            tapButton.innerText = "Please Wait...";
             countdownDiv.style.display = "none";
             countdownDiv.innerText = "";
-            gameVisual.style.display = "none"; 
+            gameVisual.style.display = "none";
+            skillBarContainer.style.display = "none"; // Hide skill bar on reset
 
-        
             if (typeof backgroundMusic !== "undefined") {
                 backgroundMusic.currentTime = 0;
                 backgroundMusic.play();
@@ -409,8 +526,10 @@
                 celebrationMusic.currentTime = 0;
             }
 
-            
-            carSVGElement = null; 
+            carSVGElement = null;
+            if (pointerAnimation) {
+                pointerAnimation.cancel(); // Stop animation on reset
+            }
         });
     </script>
 </body>
