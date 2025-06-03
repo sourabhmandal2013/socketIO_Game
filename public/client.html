@@ -293,8 +293,7 @@
         }
 
         tapButton.addEventListener("click", () => {
-												setTimeout(2000);
-            socket.emit("tap");
+												setTimeout(socket.emit("tap"), 2000)
             
             if (carSVGElement) {
                 carSVGElement.classList.remove('car-tapped');
