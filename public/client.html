@@ -293,6 +293,7 @@
         }
 
         tapButton.addEventListener("click", () => {
+												setTimeout(2000);
             socket.emit("tap");
             
             if (carSVGElement) {
