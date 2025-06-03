@@ -13,7 +13,7 @@ const port = process.env.PORT || 8080;
 app.use(express.static(path.join(__dirname, 'public')));
 
 let MAX_TAPS_GAME_SCORE; // This will be the game-winning score for a team
-const GAME_PIN = 'a689475';
+const GAME_PIN = 'dekhenge2025';
 const TEAMS = ['red', 'blue', 'green', 'yellow'];
 const TEAM_COLORS = {
     red: '#e74c3c',
